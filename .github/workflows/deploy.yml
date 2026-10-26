@@ -1,0 +1,67 @@
+name: Production Weather App Deployment Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+
+jobs:
+  infrastructure-and-deploy:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout Application Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform Engine
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Authenticate with AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-north-1
+
+      # Automatically ensure the backend storage bucket exists before initialization
+      - name: Bootstrap Core Remote State Storage Tier
+        run: |
+          aws s3api create-bucket \
+            --bucket weather-prediction-tfstate-017562255734 \
+            --region eu-north-1 \
+            --create-bucket-configuration LocationConstraint=eu-north-1 || true
+
+      # Standard single-pass infrastructure provisioning
+      - name: Provision Core Infrastructure Layers
+        run: |
+          terraform init
+          terraform apply -auto-approve
+        env:
+          TF_VAR_root_domain_name: ${{ secrets.MY_ROOT_DOMAIN }}
+          TF_VAR_app_subdomain_name: ${{ secrets.MY_SUBDOMAIN }}
+          TF_VAR_weather_api_key: ${{ secrets.MY_WEATHER_API_KEY }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Execute Managed Docker Build and Image Push
+        run: |
+          ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
+          REPO_NAME="weather-prediction-app"
+          TARGET_URL="$ECR_REGISTRY/$REPO_NAME:latest"
+
+          docker build -t $REPO_NAME:latest .
+          docker tag $REPO_NAME:latest $TARGET_URL
+          docker push $TARGET_URL
+
+      - name: Force Deploy Application Update to ECS Cluster
+        run: |
+          aws ecs update-service \
+            --cluster weather-production-cluster \
+            --service weather-prediction-service \
+            --force-new-deployment

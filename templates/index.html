@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Solar Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Solar Irradiation Prediction</h1>
+        </header>
+
+        <!-- Location Selection Form -->
+        <div class="form-container">
+            <h2>Select Location</h2>
+            <form action="/predict" method="post">
+                <div class="form-group">
+                    <label for="state">State:</label>
+                    <select name="state" id="state" onchange="updateCities()" required>
+                        <option value="" disabled selected>Select a state</option>
+                        {% for state in locations %}
+                            <option value="{{ state }}">{{ state }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="city">City:</label>
+                    <select name="city" id="city" required></select>
+                </div>
+
+                <button type="submit">Predict</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const locations = {{ locations | tojson }};
+        function updateCities() {
+            const state = document.getElementById("state").value;
+            const citySelect = document.getElementById("city");
+            citySelect.innerHTML = "";
+            locations[state].forEach(city => {
+                const option = document.createElement("option");
+                option.value = city;
+                option.textContent = city;
+                citySelect.appendChild(option);
+            });
+        }
+        window.onload = updateCities;
+    </script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prediction Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Solar Irradiation Prediction</h1>
+        </header>
+
+        <!-- Prediction Result Section -->
+        <div class="result-container">
+            <h2>Solar Irradiation Prediction for {{ city }}</h2>
+            
+            {% if predictions %}
+                <canvas id="irradiationChart" width="600" height="300"></canvas>
+                
+                <script>
+                    const labels = {{ predictions | map(attribute='date') | list | tojson }};
+                    const data = {{ predictions | map(attribute='predicted_irradiance') | list | tojson }};
+                    
+                    new Chart(document.getElementById("irradiationChart"), {
+                        type: "line",
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: "Predicted Irradiation (W/m²)",
+                                data: data,
+                                fill: false,
+                                borderColor: "#FF5733",
+                                tension: 0.2
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                y: {
+                                    beginAtZero: false
+                                }
+                            }
+                        }
+                    });
+                </script>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Predicted Irradiation (W/m²)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in predictions %}
+                                <tr>
+                                    <td>{{ row.date }}</td>
+                                    <td>{{ row.predicted_irradiance }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>No predictions available for the selected city.</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
