@@ -389,6 +389,13 @@ resource "aws_route53_record" "app_alias" {
   }
 }
 
+# Automatically attaches your new certificate onto the existing shared Load Balancer listener
+resource "aws_lb_listener_certificate" "weather_cert_attach" {
+  count           = local.create_network == 1 ? 0 : 1
+  listener_arn    = data.aws_lb_listener.crypto_https[0].arn
+  certificate_arn = aws_acm_certificate_validation.app_cert_verify.certificate_arn
+}
+
 # =================================================================
 # 7. OUTPUTS
 # =================================================================
@@ -396,4 +403,14 @@ resource "aws_route53_record" "app_alias" {
 output "custom_domain_url" {
   value       = "https://${var.app_subdomain_name}"
   description = "Your live weather forecasting endpoint link"
+}
+
+output "alb_dns_name" {
+  value       = local.create_network == 1 ? aws_alb.main[0].dns_name : data.aws_lb.existing.dns_name
+  description = "The public DNS endpoint URL of the Application Load Balancer handling this traffic"
+}
+
+output "ecr_repository_url" {
+  value       = aws_ecr_repository.app_ecr.repository_url
+  description = "The target ECR repository URL endpoint for your weather app container images"
 }
