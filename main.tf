@@ -383,8 +383,8 @@ resource "aws_route53_record" "app_alias" {
   name    = var.app_subdomain_name
   type    = "A"
   alias {
-    name                   = local.create_network == 1 ? aws_alb.main.dns_name : data.aws_lb.existing.dns_name
-    zone_id                = local.create_network == 1 ? aws_alb.main.zone_id : data.aws_lb.existing.zone_id
+    name                   = local.create_network == 1 ? aws_alb.main[0].dns_name : data.aws_lb.existing.dns_name
+    zone_id                = local.create_network == 1 ? aws_alb.main[0].zone_id : data.aws_lb.existing.zone_id
     evaluate_target_health = true
   }
 }
